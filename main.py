@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Query, HTTPException, status
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Literal, Annotated
@@ -56,5 +56,24 @@ async def add_items(item: userto_do, session: sesh):
 async def return_items(session: sesh):
     elements = session.exec(select(to_do)).all()
     return elements
+
+class queries(BaseModel):
+    title: None | str
+    done: None | str = Literal["done", "not done"]
+
+@app.get("/queried_todos/")
+async def query_todos(q: Annotated[queries, Query], session: sesh):
+    if q.title and q.done:
+        statement = select(to_do).where(to_do.title == q.title, to_do.done == to_do.done)
+        items = session.exec(statement).all()
+    else:
+        if q.title:
+            items = session.exec(select(to_do).where(to_do.title == q.title)).all()
+        elif q.done:
+            items = session.exec(select(to_do).where(to_do.done == q.done))
+        else:
+            raise HTTPException(status_code=status.HTTP_204_NO_CONTENT, detail="The queries are not queried")
     
+    return items
+
 
